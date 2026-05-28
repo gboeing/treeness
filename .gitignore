@@ -1,6 +1,7 @@
 *.code-workspace
 .DS_Store
 .python-version
+paper/latex/.output/
 analysis/cache
 analysis/data
 analysis/figures
