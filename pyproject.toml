@@ -1,12 +1,19 @@
 [project]
 authors = [{ name = "Geoff Boeing", email = "boeing@usc.edu" }]
 dependencies = [
+    "ipywidgets>=8.1.8",
     "jupyterlab",
+    "matplotlib==3.10.*",
+    "momepy>=0.10.0",
+    "nbdime==4.0.*",
+    "neatnet==0.1.*",
     "networkx==3.5.*",
     "osmnx==2.0.*",
     "pandas==2.2.*",
-    "pre-commit",
+    "prek",
+    "pyarrow>=22.0.0",
     "scipy==1.15.*",
+    "seaborn==0.13.*",
 ]
 description = "MST analysis of urban street networks. "
 license = "MIT"
@@ -17,7 +24,7 @@ requires-python = ">=3.13"
 version = "0.0.0"
 
 [tool.ruff]
-cache-dir = "~/.cache/pre-commit/ruff"
+cache-dir = "~/.cache/prek/cache/ruff"
 line-length = 100
 
 [tool.ruff.lint]
@@ -28,4 +35,4 @@ extend-select = ["A", "B", "E", "F", "I", "UP", "W"]
 max-line-length = 110 # line length + 10% since it isn't a hard upper bound
 
 [tool.uv]
-required-version = "==0.7.12"
+required-version = "==0.11.*"
