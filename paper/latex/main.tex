@@ -94,29 +94,43 @@ Urban street network redundancy provides alternatives and resilience, but requir
 
 \section{Introduction}
 
-Redundancy in urban street networks comes with a trade-off. On one hand, it provides options, alternatives, and thus resilience to disruption \citep{boeing_2024_resilient}. On the other hand, redundancy requires duplicative infrastructure and thus higher capital and maintenance costs \citep{barthelemy_2022_spatial,cardillo_2006_structural}. This trade-off constrains how we build cities and shapes the resulting urban form. As policymakers increasingly emphasize connected, sustainable urbanization practices, the concept of \enquote{treeness}---how closely a network resembles a minimal version of itself stripped of all redundancy---offers a formal method of measuring how cities have evolved or been designed to balance this trade-off.
+Redundancy in urban street networks comes with a trade-off. On one hand, it provides options, alternatives, and thus resilience to disruption \citep{barthelemy_morphogenesis_2017,boeing_2024_resilient}. On the other hand, redundancy requires duplicative infrastructure and thus higher capital and maintenance costs \citep{cardillo_2006_structural,tero_2010_rules}. This trade-off constrains how cities grow and thereby shapes the resulting urban form \citep{barthelemy_2022_spatial}. As policymakers increasingly emphasize connected, sustainable urbanization practices, the concept of \enquote{treeness}---how closely a network resembles a minimalist version of itself stripped of all redundancy---could identify vulnerabilities and reveal how cities have evolved or been designed to balance this optimization.
 
-This study measures urban treeness to ask: to what extent are cities' street networks tree-like? It defines two indicators of treeness---link redundancy and length redundancy---which it calculates for every urban area's street network in the world. We find that \textit{every} urban street network in the world is more tree-like than the other baseline networks we compare it to. We also find that urban treeness varies relatively little around the world. This suggests that cities of diverse histories, sizes, and geographies have converged on a typical balance for the real-world trade-offs between infrastructure networks' structural redundancy and cost.
+This study measures urban treeness to ask: to what extent are cities' street networks tree-like? It defines two indicators of treeness---link redundancy and length redundancy---which it calculates for every urban area's street network in the world. We find that \textit{every} urban street network in the world is more tree-like than the other baseline networks we compare them to. We also find that urban treeness is relatively invariant around the world, with no outliers. This demonstrates that cities of diverse histories, sizes, and geographies have converged on a typical balance of real-world trade-offs between infrastructure networks' redundancy benefits and costs.
 
-The remainder of this article is organized as follows. First it introduces the theory of urban treeness and reviews the mathematical formalization of trees in graph theory. Next it explains our methods for measuring treeness across the world's urban street networks, including data sources, analyses, baselines, and robustness checks. Then it presents our findings on urban treeness and its statistical and geographical distributions. Finally it discusses the implications of these findings for theorizing urban form and function and for planning more connected, sustainable cities.
+The remainder of this article is organized as follows. First it introduces the theory of spatial network treeness and reviews the mathematical formalism of trees in graph theory. Then it explains our methods for measuring treeness across the world's urban street networks, including data sources, analyses, baselines, and robustness checks. Next it presents our findings on urban treeness and its statistical and geographical properties. Finally it discusses the implications of these findings for theorizing urban form and for planning more connected, sustainable cities.
 
 \section{Theory}
 
 \subsection{A City Is Not a Tree}
 
-In 1965, design theorist Christopher Alexander wrote a short paper provocatively titled \enquote{A City Is Not a Tree} \citep{alexander_city_1965}. In it, he argued that urban planners---working centrally and top-down---tend to envision and design cities as hierarchical tree-like structures, whereas successful traditional cities evolve naturally as semi-lattices. That is, over-planned cities' street networks, neighborhoods, and school districts organize into hierarchical branching structures rather than interconnected lattices. The former implies efficiency and functional segregation. The latter implies \enquote{messy} interconnectedness and complexity. Alexander's claim was at once both descriptive and normative: (successful) cities \textit{are} not trees, and planners \textit{should} not plan cities as trees.
+In 1965, design theorist Christopher Alexander wrote a short paper provocatively titled \enquote{A City Is Not a Tree} \citep{alexander_city_1965}. In it, he argued that urban planners---working centrally and top-down---tend to envision and design cities as hierarchical tree-like structures, whereas successful traditional cities evolve naturally as semi-lattices. That is, over-planned cities' street networks, neighborhoods, and school districts organize into hierarchical branching structures rather than interconnected lattices \citep{huang_city_2022}. The former implies efficiency and functional segregation. The latter implies \enquote{messy} interconnectedness and complexity. Alexander's claim was at once both descriptive and normative: (successful) cities \textit{are} not trees, and planners \textit{should} not plan cities as trees.
 
-This paper became an influential landmark across urban studies and presaged complexity science's subsequent applications to cities \citep{rauber_alexanders_2018,huang_city_2022}. Alexander's argument dovetailed with the findings of emerging spatial network science that linked urban accessibility and resilience to interconnectedness and complexity in urban form \citep{jiang_complex-network_2016,park_network_2015}. However, Alexander adopted the language of \enquote{trees} metaphorically, merely gesturing at the mathematical definition of trees, let alone measuring whether a city actually is one empirically \citep{harary_city_1976}. Yet mathematics does provide a precise formalization of trees and their properties that allows us to model and measure cities---particularly their networks' redundancy and vulnerability---in useful ways.
+This paper became an influential landmark across urban studies and presaged complexity science's subsequent applications to cities \citep{rauber_alexanders_2018,huang_city_2022}. Alexander's argument dovetailed with the findings of emerging spatial network science that linked urban accessibility and resilience to interconnectedness and complexity in urban form \citep{jiang_complex-network_2016,park_network_2015}. However, Alexander adopted the language of \enquote{trees} metaphorically---merely gesturing at the mathematical definition of trees, let alone measuring whether a city actually is one empirically \citep{harary_city_1976}. Yet mathematics does provide a precise formalization of trees and their properties that allows us to model and measure cities---particularly their networks' redundancy and vulnerability---in useful ways.
 
 \subsection{Network Treeness}\label{sec:theory_network_treeness}
 
-Graph theory is the branch of discrete mathematics that studies networks \citep{trudeau_introduction_1994}. A graph, $G = (N, E)$ consists of a set of nodes, $N$, and a set of edges, $E$, that link pairs of nodes \citep{barthelemy_spatial_2011}. For example, we could model a street network as a spatial graph with nodes representing intersections/dead-ends and edges representing street segments, with both the nodes and the edges embedded in space \citep{fischer_spatial_2014,porta_2006_network}.
+Graph theory is the branch of discrete mathematics that studies networks \citep{trudeau_introduction_1994}. A graph, $G = (N, E)$, consists of a set of nodes, $N$, and a set of edges, $E$, that link pairs of nodes \citep{barthelemy_spatial_2011}. For example, we could model a street network as a spatial graph with nodes representing intersections/dead-ends and edges representing street segments, with both the nodes and the edges embedded in space \citep{fischer_spatial_2014,porta_2006_network,barthelemy_modeling_2008}.
 
-Formally, a tree is a type of graph that is connected and acyclic \citep{barthelemy_spatial_2011}. If $G$ is connected, then for all $u, v \in N$ there exists a sequence of edges that starts at $u$ and ends at $v$. And if $G$ is acyclic, then it contains no cycles, meaning there are no paths that start and end at the same node without retracing any edge. In other words, a tree contains exactly one path between any two nodes and every edge is a single point of failure \citep{newman_networks:_2010}. That is, if a connected graph $G$ contains $n = |N|$ nodes and $m = |E|$ edges, then $G$ is a tree if and only if $m = n - 1$, because the minimum number of edges needed to connect $n$ nodes is $n - 1$.
+Formally, a tree is a type of graph that is connected and acyclic \citep{trudeau_introduction_1994}. If $G$ is connected, then for all $u, v \in N$ there exists a sequence of edges that starts at $u$ and ends at $v$. And if $G$ is acyclic, then it contains no cycles, meaning there are no paths that start and end at the same node without retracing any edge. In other words, a tree contains exactly one path between any two nodes and every edge is a single point of failure \citep{newman_networks:_2010}. Because the minimum number of edges needed to connect $n$ nodes is naturally $n - 1$, if a connected graph $G$ contains $n = |N|$ nodes and $m = |E|$ edges, then $G$ is a tree if and only if:
 
-For our purposes, treeness entails two important properties for studying urban networks: redundancy and vulnerability \citep{barthelemy_2022_spatial}. Since a tree has only one path between any two nodes, if any edge is removed the network becomes disconnected. Accordingly trees have zero redundancy and are thus vulnerable to disruption (e.g., traffic congestion, collisions, floods, earthquakes, wildfires, terrorism) with no alternative routing options. In contrast, a less tree-like network offers multiple paths between nodes, providing redundancy and resilience to disruption when things go wrong \citep{barthelemy_spatial_2011}. Given these practical limitations of trees, one might expect that most cities evolved or were designed to incorporate at least some redundancy---which brings us to a graph-theoretic interpretation of Alexander's original metaphorical conjecture that cities are not trees.
+\begin{equation}
+    \label{eq:tree_edge_count}
+    m = n - 1
+\end{equation}
 
-One could empirically test this by measuring the treeness of a city's street network. For example, we could find the minimum spanning tree (MST) of the city's street network, and then compare it to the full network. Let $T$ be $G$'s MST: the tree that connects all of $G$'s nodes and minimizes total edge weight---e.g., total length in the case of urban streets \citep{barthelemy_2022_spatial}. We can calculate $T$'s total length, $L_T$, as:
+From this we can derive a graph's circuit rank, $\rho$, which is the number of edges that must be removed to reduce it to a spanning tree \citep{xie_2007_measuring}:
+
+\begin{equation}
+    \label{eq:circuit_rank}
+    \rho = m - n + c
+\end{equation}
+
+where $c$ is the number of components in the graph. Therefore, by definition, a connected graph has $c = 1$ and a tree has $\rho = 0$.
+
+For our purposes, treeness entails two important properties for studying urban networks: redundancy and vulnerability \citep{barthelemy_morphogenesis_2017,barthelemy_2022_spatial}. Since a tree has only one path between any two nodes, if any edge is removed the network becomes disconnected. Accordingly trees have zero redundancy and are thus vulnerable to disruption (e.g., traffic congestion, collisions, floods, earthquakes, wildfires, terrorism) with no alternative routing options. In contrast, a less tree-like network offers multiple paths between nodes, providing redundancy and resilience to disruption when things go wrong \citep{barthelemy_spatial_2011}. Given these practical limitations of trees, one might expect that most cities evolved or were designed to incorporate at least some redundancy---which brings us to a graph-theoretic interpretation of Alexander's original metaphorical conjecture that cities are not trees.
+
+One could empirically test this by measuring the treeness of a city's street network. For example, we could find the minimum spanning tree (MST) of the city's street network, and then compare it to the full network. The MST is the tree that connects all of $G$'s nodes and minimizes some total edge weight, e.g., total length in the case of urban streets \citep{barthelemy_morphogenesis_2017}. It thus represents a counterfactual network that connects all the nodes at the minimal cost---a useful reference point for cost-constrained infrastructure networks \citep{barthelemy_2022_spatial}. Let $T$ be $G$'s MST. We can calculate $T$'s total length, $L_T$, as:
 
 \begin{equation}
     \label{eq:total_edge_length}
@@ -125,21 +139,19 @@ One could empirically test this by measuring the treeness of a city's street net
 
 where $\ell_{u, v}$ is the length of the edge linking nodes $u$ and $v$, and $E_T$ is the edge set of $T$. Although the MST does not provide \enquote{last-step} access to the block frontages, it represents the minimal necessary infrastructure to preserve reachability across the network, thereby offering a theoretical lower bound and analytical counterfactual \citep{cardillo_2006_structural}. By comparing the full network modeled by $G$ to its MST $T$, we could measure how tree-like $G$ is by how much redundancy the street network contains beyond the minimal possible tree connecting all its nodes (\autoref{fig:network_examples}).
 
-\begin{figure*}[tbh]
+\begin{figure*}[tb!]
     \centering
     \includegraphics[width=0.90\textwidth]{fig_network_examples.png}
     \caption{Example small city street networks. Black lines represent the MST and red lines represent the rest of the full network. Top row: low treeness/high redundancy. Bottom row: high treeness/low redundancy.}\label{fig:network_examples}
 \end{figure*}
 
-One such topological indicator of this treeness could be the \textit{link redundancy}, akin to a normalized version of what in graph theory is called the circuit rank (the rank of the graph's first homology group): the count of how many edges must be removed to reduce a graph to a spanning tree \citep{xie_2007_measuring}. This would measure how tree-like the network is in terms of how many structurally redundant links exist beyond those necessary to uniquely connect the nodes \citep{buhl_2006_topological}. However, this is purely topological and ignores the spatially-embedded geometry of spatial graphs like street networks. A geometric equivalent could be the \textit{length redundancy}, which measures the share of the full network's total length that is in excess of the MST. This would indicate how much extra infrastructure was built beyond the minimum necessary to connect the city.
-
 \subsection{Are Some Cities Trees?}
 
 Many geographical systems are trees, including natural systems like river networks and artificial systems like municipal stormwater drainage piping \citep{hesarkazzazi_assessing_2020,sanchirico_river_2025}. The latter suggests that certain physical urban infrastructure could be tree-like due to costs or efficiency. Given that, are some cities' street networks actually (or nearly) trees?
 
-Transportation scholars have considered urban street networks as trees to distinguish branching structures from circuit-based networks. \citet{xie_2007_measuring} define road-network treeness as the complement of arterial circuitness, distinguishing tree-like arterial systems from ring, web, and beltway forms. \citet{levinson_2012_network} applies a related empirical measure to U.S. metropolitan areas, defining treeness as the share of total street length that belongs to branches rather than circuits. \citet{han_2020_classification} classify urban street networks by tree-like features such as T-intersections, cul-de-sacs, penetrating streets, and cells. Together, this literature treats treeness as a measurable street network property, but mainly through arterial structure, branch/circuit classification, or local design features.
+Transportation scholars have considered urban street networks as trees to distinguish branching structures from circuit-based networks. \citet{xie_2007_measuring} define road-network treeness as the complement of arterial circuitness, distinguishing tree-like arterial systems from ring, web, and beltway forms. \citet{levinson_2012_network} applies a related empirical measure to US metropolitan areas, defining treeness as the share of total street length that belongs to branches rather than circuits. \citet{han_2020_classification} classify urban street networks by tree-like features such as T-intersections, cul-de-sacs, penetrating streets, and cells. Together, this literature treats treeness as a measurable street network property through arterial structure, branch/circuit classification, or local design features.
 
-This raises a broader theoretical question: if treeness is measurable, what does it mean for a spatial infrastructure network? Spatial network science treats trees as the minimum connected infrastructure against which redundancy, efficiency, and robustness can be evaluated. \citet{buhl_2006_topological} place self-organized street networks between tree structures and planar triangulations, finding that tree-like settlements are more vulnerable while meshed forms are more robust and efficient. \citet{cardillo_2006_structural} compare urban street samples to minimum spanning trees and greedy triangulations, interpreting real street networks as occupying a cost-efficiency space between minimally and highly connected planar forms. \citet{barthelemy_2022_spatial} formalizes this broader trade-off in spatial networks: links added beyond a minimum spanning tree raise infrastructure cost while improving accessibility, efficiency, and fault tolerance.
+This raises a broader theoretical question: what does treeness mean for a spatial infrastructure network? Spatial network science treats trees as the minimum connected infrastructure against which redundancy, efficiency, and robustness can be evaluated \citep{barthelemy_morphogenesis_2017}. \citet{buhl_2006_topological} place self-organized street networks between tree structures and planar triangulations, finding that tree-like settlements are more vulnerable while meshed forms are more robust and efficient. \citet{cardillo_2006_structural} compare urban street samples to minimum spanning trees and greedy triangulations, interpreting real street networks as occupying a cost-efficiency space between minimally and highly connected planar forms. \citet{barthelemy_2022_spatial} formalizes this broader trade-off in spatial networks: links added beyond a minimum spanning tree raise infrastructure cost while improving accessibility, efficiency, and fault tolerance \citep[cf.][]{tero_2010_rules}.
 
 These trade-offs matter for urban planning and geography because street network treeness shapes how cities function. \citet{huang_city_2022} revisit Alexander's conjecture empirically, relating meshedness and other street-network indicators to urban life across multiple cities. \citet{barringtonleigh_2019_global} measure street-network disconnectedness worldwide and classify networks across forms ranging from grids to dendritic (i.e., tree-like) and circuitous layouts. \citet{boeing_2024_resilient} shows that disruption vulnerability is lower in street networks with more connectivity, less dependence on chokepoints, and more direct routes.
 
@@ -155,72 +167,88 @@ We use the models of the street networks of every urban area in the world from \
 
 \subsection{Measuring Treeness}
 
-For each of these urban area street networks, let $G$ be the full network's undirected graph and let $T$ be its length-weighted MST (or minimum spanning forest if $G$ is not fully connected, as discussed below). We compare $G$ to $T$ via link redundancy and length redundancy.
+For each of these urban area street networks, let $G$ be the full network's undirected graph and let $T$ be its length-weighted MST (or minimum spanning forest if $G$ is not fully connected, as discussed below). We compare $G$ to $T$ to measure its treeness.
+
+One such topological indicator of this treeness could be the \textit{link redundancy}, akin to a normalized version of the circuit rank. This would measure how tree-like the network is in terms of how many structurally redundant links exist beyond those necessary to uniquely connect the nodes \citep{buhl_2006_topological}. However, this is purely topological and ignores the spatially-embedded geometry of spatial graphs like street networks. A geometric equivalent could be the \textit{length redundancy}, which measures the share of the full network's total length that is in excess of the MST. This would indicate how much extra infrastructure was built beyond the minimum necessary to connect the city.
 
 First we define the link redundancy, $\theta$, as:
 
 \begin{equation}
     \label{eq:link_redundancy_1}
-    \theta = \frac{m - n + c}{m}
+    \theta = \frac{\rho}{m}
 \end{equation}
 
-where $m$ and $n$ are as defined in \autoref{sec:theory_network_treeness} and $c$ is $G$'s component count ($c = 1$ if $G$ is fully connected, higher if not). The numerator represents the aforementioned circuit rank and the denominator normalizes it. Note that \autoref{eq:link_redundancy_1} could be equivalently expressed as:
+where $\rho$ and $m$ are as defined in \autoref{eq:circuit_rank}. Note that \autoref{eq:link_redundancy_1} could be equivalently expressed as:
 
 \begin{equation}
     \label{eq:link_redundancy_2}
     \theta = 1 - \frac{m_T}{m}
 \end{equation}
 
-where $m_T$ is the number of edges in $T$. As redundancy and connectedness are somewhat related conceptually, we can test the relationship between $\theta$ and the average node degree, $\langle k \rangle$, a common measure of graph connectedness defined as:
+where $m_T$ is the number of edges in $T$, which \autoref{eq:tree_edge_count} tells us is $n - 1$ if $G$ is connected (or $n - c$ otherwise). As redundancy and connectedness are conceptually related, we can test the relationship between $\theta$ and the average node degree, $\langle k \rangle$, a common measure of graph connectedness defined as:
 
 \begin{equation}
     \label{eq:avg_node_degree}
     \langle k \rangle = \frac{2m}{n}
 \end{equation}
 
-$\theta$ also shares some conceptual similarity with the normalized meshedness coefficient, $\alpha$, which appears in transport engineering and is the ratio of a connected graph's circuit rank to the maximum possible number of cycles in a planar graph with the same node count \citep{levinson_2012_network,buhl_2006_topological,cardillo_2006_structural}:
+$\theta$ also shares some conceptual similarity with the normalized meshedness coefficient, $\alpha$, which appears in transport engineering \citep{levinson_2012_network,cardillo_2006_structural}. $\alpha$ is the ratio of a connected graph's circuit rank to the maximum possible circuit rank of a connected planar graph with the same node count:
 
 \begin{equation}
     \label{eq:meshedness_coefficient}
-    \alpha = \frac{m - n + 1}{2 n - 5}
+    \alpha = \frac{\rho}{2 n - 5}
 \end{equation}
 
-where the denominator derives from algebraic homology's Euler characteristic of planar graphs, since urban street networks are quasiplanar \citep{boeing_planarity_2020}. However, by combining Equations \ref{eq:avg_node_degree} and \ref{eq:meshedness_coefficient} we can see that, as $n \to \infty$,
+This denominator derives from Euler's formula---since urban street networks are quasiplanar \citep{buhl_2006_topological,boeing_planarity_2020}---which tells us that the maximum possible number of edges in a simple connected planar graph is:
 
 \begin{equation}
-    \label{eq:alpha_to_infinity}
+    \label{eq:max_planar_edges}
+    m_{\text{max}} = 3 n - 6
+\end{equation}
+
+Substituting this into \autoref{eq:circuit_rank} gives us the maximum possible circuit rank---the denominator from \autoref{eq:meshedness_coefficient}:
+
+\begin{equation}
+    \label{eq:max_planar_circuit_rank}
+     \rho_{\text{max}} = (3 n - 6) - n + 1 = 2 n - 5
+\end{equation}
+
+However, by combining Equations~\ref{eq:circuit_rank},~\ref{eq:avg_node_degree}, and~\ref{eq:meshedness_coefficient} we can see that, as $n \to \infty$:
+
+\begin{equation}
+    \label{eq:alpha_limit}
     \alpha \to \frac{\langle k \rangle}{4} - 0.5
 \end{equation}
 
-Thus, for large graphs like urban-scale street networks, $\alpha$ is approximately an affine transformation of $\langle k \rangle$ and therefore offers minimal statistical information beyond $\langle k \rangle$ itself. This makes the link redundancy, $\theta$, a more useful topological indicator of redundancy and (inverse) treeness for comparison across city-sized street networks.
+Thus, for large graphs like urban-scale street networks, $\alpha$ is approximately an affine transformation of $\langle k \rangle$ and therefore offers minimal statistical information beyond $\langle k \rangle$ itself. This makes the link redundancy, $\theta$, a more informative topological indicator of treeness (and thus inverse redundancy) for comparison across city-sized street networks.
 
-Moving beyond pure topology, we also calculate a geometric indicator---the length redundancy, $\lambda$---as a geometric corollary to $\theta$. It represents the share of the full network's length in excess of the MST's length and is defined as:
+Beyond pure topology, we also calculate a geometric indicator---the length redundancy, $\lambda$---as a spatial corollary to $\theta$. It represents the share of the full network's length in excess of the MST's length and is defined as:
 
 \begin{equation}
     \label{eq:length_redundancy}
     \lambda = 1 - \frac{L_T}{L}
 \end{equation}
 
-where $L_T$ is as defined in \autoref{eq:total_edge_length} and $L$ is the equivalent total length of $G$. Note the mathematical correspondence between Equations \ref{eq:link_redundancy_2} and \ref{eq:length_redundancy}. Both $\theta$ and $\lambda$ are bounded by $[0,1)$, assuming $m > 0$ and $L > 0$ for any nontrivial real-world network. These are both indicators of treeness since $\theta = \lambda = 0$ indicates a perfect tree and higher values indicating greater redundancy/less treeness.
+where $L_T$ is as defined in \autoref{eq:total_edge_length} and $L$ is the equivalent total length of $G$. Note the mathematical correspondence between Equations \ref{eq:link_redundancy_2} and \ref{eq:length_redundancy}. Both $\theta$ and $\lambda$ are bounded by $[0,1)$, assuming $m > 0$ and $L > 0$ for any nontrivial real-world network. These are both indicators of treeness since $\theta = \lambda = 0$ indicates a perfect tree, whereas higher values indicate greater redundancy/less treeness.
 
 \subsection{Analysis}
 \label{sec:methods_analysis}
 
-We calculate these treeness indicators for every urban area in the world then analyze their distributions to describe the nature of urban treeness. We also calculate Pearson correlation coefficients to test their relationships with each other and with other urban indicators from \citet{boeing_urban_2026}, which describes the latter in detail. They include the aforementioned total network length $L$ (meters), hilliness (the standard deviation of node elevations, meters), the aforementioned average node degree $\langle k \rangle$ (dimensionless), the Gini coefficient of node betweenness centralities (a dimensionless measure of concentrated importance in certain nodes), average circuity (a dimensionless measure of the streets' deviation from straight lines), orientation entropy (a dimensionless measure of the disorder in street bearings), built-up area (km\textsuperscript{2}), intersection density (per km\textsuperscript{2} of built-up area), and population density (1000s of persons per km\textsuperscript{2} of built-up area). We take the natural logarithms of $L$ and built-up area for a better linear fit.
+We calculate these treeness indicators for every urban area in the world then analyze their distributions to describe the nature of urban treeness. To better understand how treeness relates to other network properties relevant to urban planning, we also calculate Pearson correlation coefficients, $r$, to test their relationships with each other and with other urban indicators from \citet{boeing_urban_2026}, which explains their relevance and calculation in detail. But to summarize them here, these other urban indicators include the aforementioned total network length $L$ (meters), hilliness (the standard deviation of node elevations, meters), the aforementioned average node degree $\langle k \rangle$ (dimensionless), the Gini coefficient of node betweenness centralities (a dimensionless measure of concentrated importance in certain nodes), average circuity (a dimensionless measure of the streets' average deviation from straight lines), orientation entropy (a dimensionless measure of the disorder in street bearings), built-up area (km\textsuperscript{2}), intersection density (per km\textsuperscript{2} of built-up area), and population density (thousands of persons per km\textsuperscript{2} of built-up area). We take the natural logarithms of $L$ and built-up area for a better linear fit with our treeness indicators.
 
 \subsection{Baselines and Robustness Checks}
 
-To establish an empirical baseline, we also calculate $\theta$ for several other kinds of undirected networks available from the ICON\endnote{Available online at \url{https://icon.colorado.edu/}} database, including the MSN social network \citep{leskovec_planetary-scale_2008}, the European airline network \citep{cardillo_emergence_2013}, the Paris subway network \citep{roth_long-time_2012}, and the Delhi bus route network \citep{chatterjee_statistical_2016}. To do so, we use the $m$ and $n$ values reported in each reference and assume $c=1$, which introduces a merely negligible error when the number of components is small relative to $m$, as is normal. These baselines are not experimental controls or matched counterfactuals and they differ in spatial embedding, planarity, and scale. We use them only as reference points to contextualize the magnitude and range of urban street network treeness relative to other familiar network types.
+To establish an empirical baseline of treeness, we also calculate $\theta$ for several other kinds of undirected networks available from the ICON\endnote{Available online at \url{https://icon.colorado.edu/}} database, including the MSN social network \citep{leskovec_planetary-scale_2008}, the European airline network \citep{cardillo_emergence_2013}, the Paris subway network \citep{roth_long-time_2012}, and the Delhi bus route network \citep{chatterjee_statistical_2016}. To do so, we use the $m$ and $n$ values reported in each reference and assume $c=1$, which introduces a merely negligible error when the number of components is small relative to $m$, as is normal. These baselines are not experimental controls or matched counterfactuals and they differ in spatial embedding, planarity, and scale. We use them only as reference points to contextualize the magnitude and range of urban street network treeness relative to other familiar network types.
 
 We also conduct two robustness checks by recalculating $\theta$ and $\lambda$ for (1) a topologically corrected version of $G$, and (2) only the largest component of $G$. For the first, we topologically correct $G$ using the \texttt{neatnet} package \citep{fleischmann_adaptive_2026}. This simplifies complex digitization, for example by collapsing multiple nodes representing single real-world intersections or multiple edges representing centerlines of a single divided road. This tests whether excess edges arising merely as artifacts of digitization bias our results by making networks appear more redundant than they actually are.
 
-Regarding the second, urban street networks are usually fully connected in the real world: you can reach any node from any other node. However, controlled access points, ferries, and the imposition of an artificial perimeter on the graph can produce disjoint components. If this happens, the MST of the full graph is technically a minimum spanning forest instead, and $\theta$ will be biased upward by the number of components, $c$, in the graph: per \autoref{eq:link_redundancy_1}, as $c$ increases, $\theta$ increases even if the actual redundancy of the network has not changed. Therefore, we recalculate $\theta$ and $\lambda$ for each graph's largest component only, to test whether disconnected graphs bias our results.
+Regarding the second, urban street networks are usually fully connected in the real world: you can reach any node from any other node. However, controlled access points, ferries, and the imposition of an artificial perimeter on the graph can produce disjoint components. If this happens, the MST of the full graph is technically a minimum spanning forest instead, and $\theta$ will be biased upward by the number of components, $c$, in the graph because, per \autoref{eq:link_redundancy_1}, as $c$ increases, $\theta$ increases even if the actual redundancy of the network has not changed. Therefore, we recalculate $\theta$ and $\lambda$ for each graph's largest component only, to test whether disconnected graphs bias our results.
 
 \section{Findings}
 
 \subsection{Empirical Baselines}\label{sec:findings_empirical_baselines}
 
-We first report the $\theta$ values calculated for the other \enquote{kinds} of networks as a baseline. The MSN social network---an aspatial network---has a $\theta$ of 0.862. The European airline network---a spatial network with nodes but not edges embedded in space---is 0.875. The Paris subway network---a spatial network with both nodes and edges embedded in space---is 0.581, and the Delhi bus route network---another spatial network with both nodes and edges embedded in space---is 0.638. In other words, we can interpret these baselines as indicating that 58--88\% of these networks' edges would have to be removed to reduce them to their spanning trees.
+We first report the $\theta$ values calculated for the other \enquote{kinds} of networks as an analytical baseline. The MSN social network---an aspatial network---has a $\theta$ of 0.862. The European airline network---a nonplanar spatial network with nodes embedded in space but edges only debatably so---is 0.875. The Paris subway network---a nonplanar spatial network with both nodes and edges embedded and fixed in space---is 0.581, and the Delhi bus route network---a quasiplanar spatial network with both nodes and edges embedded and fixed in space---is 0.638. In other words, we can interpret these baselines as indicating that 58--88\% of these networks' edges would have to be removed to reduce them to their spanning trees. This empirical reference range contextualizes the following findings.
 
 \subsection{Empirical Street Network Treeness}
 
@@ -250,7 +278,7 @@ Worldwide & 0.031 & 0.281 & 0.288 & 0.458 & 0.024 & 0.442 & 0.454 & 0.707 \\
 \end{tabular}
 \end{table*}
 
-Similarly, the length redundancy, $\lambda$, ranges empirically from 0.024--0.707 with a mean of 0.442, a median of 0.454, and a standard deviation of 0.091. This indicates that 44\% of the edge length in the average urban street network would have to be removed to reduce it to its spanning tree. As expected, we see that $\lambda$ is typically higher than $\theta$ (since $T$ is a length-weighted MST) but they are strongly correlated ($r = 0.90$, $p < 0.001$), indicating a close relationship between topological and geometric treeness.
+Similarly, the length redundancy, $\lambda$, ranges empirically from 0.024--0.707 with a mean of 0.442, a median of 0.454, and a standard deviation of 0.091. This indicates that 44\% of the edge length in the average urban street network would have to be removed to reduce it to its spanning tree. As expected, we see that $\lambda$ is typically higher than $\theta$ (since $T$ is a length-weighted MST) but they strongly correlate ($r = 0.90$, $p < 0.001$), indicating a close relationship between topological and geometric treeness.
 
 \begin{figure*}[!tb]
     \centering
@@ -278,21 +306,49 @@ In spite of this characteristic scale, there are some differences in different p
 
 \subsection{Robustness Checks}
 
-We observe that our empirical findings are robust against re-analyzing the topologically corrected graphs. For example, the global mean $\theta$ drops only slightly from 0.28 to 0.26 and mean $\lambda$ drops from 0.44 to 0.41, as expected since topological correction should remove at least some edges. The relationships in \autoref{fig:scatter_regressions} remain stable, with the same signs and similar magnitudes. When re-analyzing only the largest component, we observe even greater robustness of the findings. The global mean $\theta$ remains 0.28 and mean $\lambda$ remains 0.44. Again the relationships in \autoref{fig:scatter_regressions} remain stable, with the same signs and similar magnitudes. In fact, in the median urban area, 99.8\% of the edges belong to the largest component. Overall, these checks show that our findings are unbiased by digitization artifacts or disconnected graphs.
+We observe that our empirical findings are robust against re-analyzing the topologically corrected graphs. For example, the global mean $\theta$ drops only slightly from 0.28 to 0.26 and mean $\lambda$ drops from 0.44 to 0.41, as expected since topological correction should remove at least some edges. The relationships in \autoref{fig:scatter_regressions} remain stable, with the same signs and similar magnitudes. When re-analyzing only the largest component, we observe even greater robustness of the findings. The global mean $\theta$ remains 0.28 and mean $\lambda$ remains 0.44. Again the relationships in \autoref{fig:scatter_regressions} remain stable, with the same signs and similar magnitudes. In fact, in the median urban area, 99.8\% of the edges belong to the largest component. Overall, these checks show that our findings are effectively unbiased by digitization artifacts or disconnected graphs.
 
 \section{Discussion}
 
 \subsection{A City Is Sometimes Kind of a Tree}
 
-This suggests that urban treeness is a fundamental property of cities that is relatively invariant across the world, despite the wide variety of urban forms and contexts. This also suggests that there may be some underlying universal processes or constraints that shape urban treeness, which we theorize in the next section.
+This study asked how tree-like cities' street networks are. We find that all cities contain at least some redundancy, but many contain surprisingly little. In that sense, Alexander's conjecture was literally correct: no city in the world is a perfect tree. However, many are very tree-like with $\theta$ values as low as 0.03, indicating what we might call a \textit{quasi-tree}. Redundancy is negligible in such cases as merely 3\% of links need to be removed to reduce it to a spanning tree. In Alexander's parlance, we observe that a city is sometimes kind of a tree.
 
-\subsection{Treeness and Redundancy in Urban Form}
+Tree-like cities are not outliers or anomalies. In fact, we observe that every urban street network in the world is more tree-like than the baseline networks we compared them to. The least tree-like (most redundant) city in the world has just 45\% of its edges in excess of its MST---much lower than the reference range. And in the average city, just 28\% of edges would need to be removed to eliminate all link redundancy. We also observe a close relationship between topological and geometric treeness: link and length redundancy strongly correlate, but length redundancy tends to be higher since we are working with length-weighted MSTs.
 
-TBD
+Treeness also has significant relationships with other urban indicators of practical interest. Larger cities tend to be less tree-like, consistent with the idea that as cities grow, their two-dimensional space-filling process introduces redundancies into the network. This growth process may also be shaped by topography, since we observe that hillier cities are more tree-like. That is, rough terrain constrains the space-filling process of urban growth toward a dendritic form along foothills and canyons rather than forming a complete lattice. We also see that more tree-like networks are also less connected, more circuitous, and have more concentrated chokepoints.
+
+\subsection{Urban Treeness as Constrained Redundancy}
+
+Although larger cities tend to be less tree-like, $\theta$ and $\lambda$ only weakly and moderately correlate with city size, respectively. City size is scale-free, spanning many orders of magnitude from small towns to megacity outliers like Jakarta and Mexico City. Urban treeness, however, varies within a much narrower range: both indicators cluster relatively tightly around their means with no outliers, and most regional averages fall close to the worldwide average. This suggests that urban street networks converge toward a characteristic scale of redundancy despite vast differences in city size, history, topography, and geographic context.
+
+This range could reflect a basin of attraction that represents a reasonable optimization of costs and benefits. Cities need some redundancy to support circulation, access, and resilience, but each additional street segment consumes land, entails capital and maintenance costs, and requires interfacing with the surrounding built environment. Thus, rather than maximizing redundancy, cities settle within a reasonable range that balances the trade-offs of redundancy's costs and benefits.
+
+Quasiplanarity can help further explain this constrained range. For example, we can substitute Equations~\ref{eq:max_planar_edges} and~\ref{eq:max_planar_circuit_rank} into the denominator and numerator, respectively, of \autoref{eq:link_redundancy_1} to find the maximum possible $\theta$ of a simple connected planar graph with $n$ nodes:
+
+\begin{equation}
+    \theta_{\text{max}} = \frac{2n - 5}{3n - 6}
+\end{equation}
+
+which approaches $2 / 3$ as $n \to \infty$. All of the world's street networks fall \textit{well} below this theoretical upper limit. However, by combining Equations~\ref{eq:avg_node_degree} and~\ref{eq:max_planar_edges}, we can see that a maximally connected planar graph has $\langle k \rangle \to 6$ as $n \to \infty$. Although real-world street networks certainly \textit{could} be built as such triangulations, they rarely \textit{are} because 5- and 6-way intersections complicate traffic control, navigation, and urban design. A more practical upper bound for most cities might instead be a perfect grid, where $\langle k \rangle \to 4$ and therefore $m \approx 2n$, per \autoref{eq:avg_node_degree}. Thus, if we substitute this $m$ value into \autoref{eq:link_redundancy_2}, we can approximate the asymptotic $\theta$ of a perfect grid as:
+
+\begin{equation}
+    \theta_{\text{grid}} = 1 - \frac{n - 1}{2n} = \frac{n + 1}{2n}
+\end{equation}
+
+which approaches $1/2$ as $n \to \infty$, an upper limit which is indeed close to our maximum observed $\theta$ of 0.458. Thus, typical urban treeness may represent an optimization of redundancy---but it is one that is constrained by the practicalities of urban design. Quasiplanarity sets an upper limit, but other important constraints like pragmatic intersection geometries, traffic control, block shapes, underlying terrain, construction and maintenance costs, and the limited utility of adding every possible link collectively constrain the world's realized street network forms.
+
+\subsection{Implications and Future Research}
+
+For research...
+
+For practice...
+
+Limitations: MST is a theroetical lower bound, not an actual street planning proposal. The baseline networks serve to contextualize magnitude but should be expanded as counterfactuals. Future research should examine treeness within cities at the neighborhood scale, track how treeness changes through urban expansion and growth, and test how these indicators relate to travel behavior, emissions, emergency response, safety, accessibility, and equity.
 
 \section*{Acknowledgments}
 
-I wrote this paper myself, by hand, without AI:\@ the ideas and any mistakes are my own. Early portions of this research-in-progress were presented in (far too many) talks at Harvard University, the London School of Economics, UCL CASA, the University of Liverpool, New York University, the University of Pennsylvania, the Complexity Science Hub in Vienna, Charles University in Prague, the University of Zurich, the ISI Foundation in Turin, and the University of Helsinki. I am grateful for all the helpful feedback from these audiences that helped me shape these ideas. Sabbaticals are a good thing.
+I wrote this paper myself, by hand, without AI:\@ all the ideas and any mistakes herein are my own. Early portions of this research-in-progress were presented in (far too many) talks at Harvard University, the London School of Economics, UCL CASA, the University of Liverpool, New York University, the University of Pennsylvania, the Complexity Science Hub in Vienna, Charles University in Prague, the University of Zurich, the ISI Foundation in Turin, and the University of Helsinki. I am grateful for all the helpful feedback from these audiences that helped me shape these ideas. Sabbaticals are a good thing.
 
 % print the footnotes as endnotes, if any exist
 \IfFileExists{\jobname.ent}{\theendnotes}{}
