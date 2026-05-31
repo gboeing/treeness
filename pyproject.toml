@@ -1,24 +1,24 @@
 [project]
 authors = [{ name = "Geoff Boeing", email = "boeing@usc.edu" }]
 dependencies = [
-    "ipywidgets>=8.1.8",
+    "ipywidgets==8.1.*",
     "jupyterlab",
     "matplotlib==3.10.*",
-    "momepy>=0.10.0",
+    "momepy==0.10.*",
     "nbdime==4.0.*",
     "neatnet==0.1.*",
     "networkx==3.5.*",
     "osmnx==2.0.*",
     "pandas==2.2.*",
     "prek",
-    "pyarrow>=22.0.0",
+    "pyarrow==22.0.*",
     "scipy==1.15.*",
     "seaborn==0.13.*",
 ]
-description = "MST analysis of urban street networks. "
+description = "Analysis of urban street networks treeness"
 license = "MIT"
 license-files = ["LICENSE.txt"]
-name = "mst"
+name = "treeness"
 readme = "README.md"
 requires-python = ">=3.13"
 version = "0.0.0"
