@@ -35,7 +35,8 @@
 % print only the month and year when using \today
 \newdateformat{monthyeardate}{\monthname[\THEMONTH] \THEYEAR}
 
-\newcommand{\papertitle}{A City Is Sometimes Kind of a Tree: Urban Street Network Treeness and Constrained Redundancy}
+\newcommand{\papertitle}{A City Is Sometimes Kind of a Tree}
+% Urban Street Network Treeness and Constrained Redundancy
 % How Tree-Like Are Cities?
 \newcommand{\myname}{Geoff Boeing}
 \newcommand{\myorcid}{0000-0003-1851-6411}  % chktex 8
@@ -97,7 +98,7 @@ Urban street network redundancy provides alternatives and resilience, but requir
 
 Redundancy in urban street networks comes with a trade-off. On one hand, it provides options, alternatives, and thus resilience to disruption \citep{barthelemy_morphogenesis_2017,boeing_2024_resilient}. On the other hand, redundancy requires additional infrastructure and thus higher capital and maintenance costs \citep{cardillo_2006_structural,tero_2010_rules}. This trade-off constrains how cities grow and thereby shapes the resulting urban form \citep{barthelemy_2022_spatial}. As policymakers increasingly emphasize connected, sustainable urbanization practices, measures of \enquote{treeness}---how closely a network resembles a counterfactual minimalist version of itself stripped of all redundancy---could identify vulnerabilities and reveal how cities have evolved or been designed to balance this optimization.
 
-This study measures urban treeness to ask: to what extent are cities' street networks tree-like? It defines two indicators of treeness---link redundancy and length redundancy---which it calculates for every urban area's street network in the world. We find that \textit{every} urban street network in the world is more tree-like than the other baseline networks to which we compare them. Larger cities and less-hilly cities are less tree-like, which aligns with theories of urbanization as a space-filling process. But overall, we find that urban treeness has a characteristic scale around the world, without outliers. This demonstrates that cities of diverse histories, sizes, and geographies have converged toward a typical balance of real-world trade-offs of network redundancy benefits and costs---constrained by spatial embedding and the requirements of functional transport.
+This study measures urban treeness to ask: to what extent are cities' street networks tree-like? It defines two indicators of treeness---link redundancy and length redundancy---which it calculates for every urban area's street network in the world. We find that \textit{every} urban street network in the world is more tree-like than the other baseline networks to which we compare them. Larger cities and less-hilly cities are less tree-like, which we argue aligns with theories of urbanization as a space-filling process. But overall, we find that urban treeness has a characteristic scale around the world, without outliers. This demonstrates that cities of diverse histories, sizes, and geographies have converged toward a typical balance of real-world trade-offs of network redundancy benefits and costs, constrained by spatial embedding and the requirements of functional transport.
 
 The remainder of this article is organized as follows. First it introduces the theory of spatial network treeness and reviews the mathematical formalism of trees in graph theory. Then it explains our methods for measuring treeness across the world's urban street networks, including data sources, analyses, baselines, and robustness checks. Next it presents our findings on urban treeness and its statistical and geographical properties. Finally it discusses the implications of these findings for theorizing urban form and for planning more connected, sustainable cities.
 
@@ -269,7 +270,7 @@ Australia/New Zealand & 0.176 & 0.257 & 0.256 & 0.327 & 0.309 & 0.429 & 0.432 & 
 Central/Southern Asia & 0.031 & 0.231 & 0.236 & 0.428 & 0.024 & 0.380 & 0.387 & 0.707 \\
 Eastern/SE Asia & 0.062 & 0.295 & 0.308 & 0.436 & 0.132 & 0.453 & 0.465 & 0.675 \\
 Europe & 0.070 & 0.264 & 0.276 & 0.382 & 0.166 & 0.428 & 0.439 & 0.599 \\
-Lat. Am./Caribbean & 0.109 & 0.327 & 0.337 & 0.458 & 0.178 & 0.498 & 0.509 & 0.692 \\
+Latin Am/Caribbean & 0.109 & 0.327 & 0.337 & 0.458 & 0.178 & 0.498 & 0.509 & 0.692 \\
 N Africa and W Asia & 0.077 & 0.305 & 0.317 & 0.432 & 0.183 & 0.488 & 0.503 & 0.601 \\
 Northern America & 0.175 & 0.299 & 0.304 & 0.392 & 0.303 & 0.484 & 0.491 & 0.601 \\
 Oceania & 0.095 & 0.182 & 0.197 & 0.277 & 0.186 & 0.305 & 0.335 & 0.447 \\
@@ -300,7 +301,7 @@ Similarly, the length redundancy, $\lambda$, ranges empirically from 0.024--0.70
     \caption{Relationships between the street network treeness indicators, $\theta$ (link redundancy) and $\lambda$ (length redundancy), and other variables (units/descriptions in \autoref{sec:methods_analysis}) across all of the world's urban areas. Correlation coefficients ($r$) are shown with statistical significance (* $p < 0.05$, *** $p < 0.001$).}\label{fig:scatter_regressions}
 \end{figure*}
 
-\autoref{fig:histogram_indicators} illustrates the statistical distributions of $\theta$ and $\lambda$ across all the urban areas. It reveals a particularly interesting property of treeness at the urban-scale: both histograms are sharply peaked with narrow tails and zero extreme outliers (commonly defined as observations beyond $3\times$ the interquartile range). In fact, their coefficients of variation ($\sigma$ / $\mu$) are just 0.242 ($\theta$) and 0.205 ($\lambda$). These are bounded indicators, but most observations cluster fairly tightly around their mean. In other words, the treeness of urban street networks has a characteristic scale despite the scale-invariance of city size and the wide variety of urban forms and contexts.
+\autoref{fig:histogram_indicators} illustrates the statistical distributions of $\theta$ and $\lambda$ across all the urban areas. It reveals a particularly interesting property of treeness at the urban-scale: both histograms are sharply peaked with narrow tails and zero extreme outliers (observations beyond $3\times$ the interquartile range). In fact, their coefficients of variation ($\sigma$ / $\mu$) are just 0.242 ($\theta$) and 0.205 ($\lambda$). These are bounded indicators, but most observations cluster fairly tightly around their mean. In other words, the treeness of urban street networks has a characteristic scale despite the scale-invariance of city size and the wide variety of urban forms and contexts.
 
 In spite of this characteristic scale, there are some differences in different parts of the world (\autoref{tab:treeness_descriptive}). For example, Latin American and Caribbean cities have the highest mean $\theta$ and $\lambda$ values, while Oceania has the lowest. However, except for Oceania, all regions' means fall within one standard deviation of both indicators' worldwide means. Among megacities with at least 10 million residents, Buenos Aires is the least tree-like urban area ($\theta=0.415$, $\lambda=0.555$) and Bangkok is the most ($\theta=0.131$, $\lambda=0.290$). \autoref{fig:ba_vs_bangkok} shows typical neighborhoods in each to illustrate why: Buenos Aires has a lattice-like grid across the city, whereas Bangkok's network epitomizes a tree with its dendritic, branching dead-ends.
 
