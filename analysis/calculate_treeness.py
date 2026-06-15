@@ -8,10 +8,15 @@ import numpy as np
 import osmnx as ox
 import pandas as pd
 
-ox.settings.log_console = False  # type: ignore
-
+# input folder: use either /data/snm/models/graphml to analyze original graphs
+# or /data/snm/models/neat to analyze neatnet-cleaned graphs
 graphml_path = "/data/snm/models/neat"
-save_path = "./data/mst-results_no_treewidth-neat.csv"
+
+# where to save the analysis results: either treeness-results.csv for the
+# original graphs or treeness-results_neat.csv for the neatneat-cleaned graphs
+save_path = "./data/treeness-results.csv"
+
+# how many CPUs to use for multiprocessing of many graphs
 cpus = 18  # mp.cpu_count()
 
 
@@ -33,10 +38,6 @@ def calculate_stats(G):
     circuit_rank = len(G.edges) - len(G.nodes) + len(list(nx.connected_components(G)))
     circuit_rank_ratio = circuit_rank / len(G.edges)
 
-    # calculate treewidth of G (slow and high-memory consumption)
-    # treewidth, _ = nx.algorithms.approximation.treewidth_min_degree(nx.Graph(G))
-    treewidth = None
-
     return (
         edge_count_orig,
         edge_count_mst,
@@ -46,7 +47,6 @@ def calculate_stats(G):
         length_ratio,
         circuit_rank,
         circuit_rank_ratio,
-        treewidth,
     )
 
 
@@ -119,7 +119,6 @@ cols = [
     "length_ratio",
     "circuit_rank",
     "circuit_rank_ratio",
-    "treewidth",
     "edge_count_orig_cc",
     "edge_count_mst_cc",
     "edge_count_ratio_cc",
@@ -128,7 +127,6 @@ cols = [
     "length_ratio_cc",
     "circuit_rank_cc",
     "circuit_rank_ratio_cc",
-    "treewidth_cc",
     "cc_edge_ratio",
     "cc_length_ratio",
 ]
