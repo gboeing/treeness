@@ -7,7 +7,6 @@ analysis/data
 analysis/figures
 paper/lit
 notes.txt
-uv.lock
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
