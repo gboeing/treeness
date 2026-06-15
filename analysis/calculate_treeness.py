@@ -52,6 +52,8 @@ def calculate_stats(G):
 
 def add_missing_edge_lengths(G):
     # expect G to be projected, so we use euclidean distance
+    # TO-DO: can we use edge.geometry.length attribute instead, in case
+    # neatnet gives us a curving new geometry back?
     missing = [
         (u, v, k)
         for u, v, k, d in G.edges(keys=True, data=True)
