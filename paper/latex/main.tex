@@ -165,7 +165,7 @@ This study addresses this challenge and asks: to what extent are cities' street 
 
 \subsection{Data Sources}
 
-We use the models of the street networks of every urban area in the world from \citet{boeing_urban_2026}. These are 10,351 spatial graphs where nodes represent intersections/dead-ends and edges represent street segments \citep{boeing_topological_2025}. Each graph edge has a weight attribute representing its length in meters. We use undirected graphs because active transport such as walking is undirected, as is the underlying infrastructure itself, even if certain vehicles face flow direction constraints on certain streets.
+We use the models of the street networks of every urban area in the world from \citet{boeing_urban_2026}. These are 9,923 spatial graphs where nodes represent intersections/dead-ends and edges represent street segments \citep{boeing_topological_2025}, and $n > 100$ to ensure we study cities rather than tiny rural villages. Each graph edge has a weight attribute representing its length in meters. We use undirected graphs because active transport such as walking is undirected, as is the underlying infrastructure itself, even if certain vehicles face flow direction constraints on certain streets.
 
 \subsection{Measuring Treeness}
 
@@ -309,7 +309,7 @@ In spite of this characteristic scale, there are some differences in different p
 
 \subsection{Robustness Checks}
 
-We observe that our empirical findings are robust against re-analyzing with topologically corrected graphs. The global mean $\theta$ drops only slightly from 0.28 to 0.26 and mean $\lambda$ drops from 0.44 to 0.41, as expected since topological correction should remove at least \textit{some} edges. The relationships in \autoref{fig:scatter_regressions} remain stable, with the same signs and similar magnitudes. We observe even greater robustness of the findings when re-analyzing only the largest component (in fact, in the median urban area, 99.8\% of the edges belong to the largest component). The global mean $\theta$ remains 0.28 and mean $\lambda$ remains 0.44. Again the relationships in \autoref{fig:scatter_regressions} remain stable, with the same signs and similar magnitudes. Overall, these checks show that our findings are effectively unbiased by digitization artifacts or disconnected graphs.
+We observe that our empirical findings are robust against re-analyzing with topologically corrected graphs. The global mean $\theta$ drops only slightly from 0.28 to 0.26 and mean $\lambda$ drops from 0.44 to 0.41, as expected since topological correction should remove at least \textit{some} edges. The relationships in \autoref{fig:scatter_regressions} remain stable, with the same signs and significance outside of the correlation between $\lambda$ and hilliness, which becomes statistically insignificant. We observe even greater robustness of the findings when re-analyzing only the largest component (in fact, in the median urban area, 99.8\% of the edges belong to the largest component). The global mean $\theta$ remains 0.28 and mean $\lambda$ remains 0.44. Again the relationships in \autoref{fig:scatter_regressions} remain stable, with the same signs and similar magnitudes. Overall, these checks show that our findings are effectively unbiased by digitization artifacts or disconnected graphs.
 
 \section{Discussion}
 

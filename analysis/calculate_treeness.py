@@ -14,7 +14,7 @@ graphml_path = "/data/snm/models/neat"
 
 # where to save the analysis results: either treeness-results.csv for the
 # original graphs or treeness-results_neat.csv for the neatneat-cleaned graphs
-save_path = "./data/treeness-results.csv"
+save_path = "./data/treeness-results_neat.csv"
 
 # how many CPUs to use for multiprocessing of many graphs
 cpus = 18  # mp.cpu_count()
