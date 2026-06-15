@@ -4,13 +4,14 @@ from pathlib import Path
 from random import sample
 
 import networkx as nx
+import numpy as np
 import osmnx as ox
 import pandas as pd
 
-ox.settings.log_console = False
+ox.settings.log_console = False  # type: ignore
 
-graphml_path = "/data/snm/models/graphml"
-save_path = "./mst-results_no_treewidth.csv"
+graphml_path = "/data/snm/models/neat"
+save_path = "./data/mst-results_no_treewidth-neat.csv"
 cpus = 18  # mp.cpu_count()
 
 
@@ -33,8 +34,8 @@ def calculate_stats(G):
     circuit_rank_ratio = circuit_rank / len(G.edges)
 
     # calculate treewidth of G (slow and high-memory consumption)
-    treewidth = None
     # treewidth, _ = nx.algorithms.approximation.treewidth_min_degree(nx.Graph(G))
+    treewidth = None
 
     return (
         edge_count_orig,
@@ -49,11 +50,39 @@ def calculate_stats(G):
     )
 
 
+def add_missing_edge_lengths(G):
+    # expect G to be projected, so we use euclidean distance
+    missing = [
+        (u, v, k)
+        for u, v, k, d in G.edges(keys=True, data=True)
+        if np.isnan(d.get("length", np.nan))
+    ]
+    if len(missing) > 0:
+        x = G.nodes(data="x")
+        y = G.nodes(data="y")
+        c = np.array([(y[u], x[u], y[v], x[v]) for u, v, k in missing])
+        dists = ox.distance.euclidean(c[:, 0], c[:, 1], c[:, 2], c[:, 3])
+        dists[np.isnan(dists)] = 0
+        missing_edge_lengths = dict(zip(missing, dists, strict=True))
+        nx.set_edge_attributes(G, values=missing_edge_lengths, name="length")
+
+    return G
+
+
 def process_graph(fp):
     print(ox.ts(), f"Processing {fp.stem}")
 
+    # handle any nonstandard attr values from neatnet neatify result
+    dtypes = {
+        "osmid": str,
+        "oneway": str,
+        "reversed": str,
+    }
+
     # load (undirected) graph from file and process even if not fully connected
-    G = ox.convert.to_undirected(ox.io.load_graphml(fp))
+    # add any missing edge lengths that may have resulted from neatify process
+    G = ox.convert.to_undirected(ox.io.load_graphml(fp, node_dtypes=dtypes, edge_dtypes=dtypes))
+    G = add_missing_edge_lengths(G)
     stats = calculate_stats(G)
 
     # same thing again, but only for largest connected component of G
