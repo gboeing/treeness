@@ -22,18 +22,6 @@ repos:
       - id: no-commit-to-branch
       - id: trailing-whitespace
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.15
-    hooks:
-      - id: ruff-check
-        args: [--no-cache, --fix]
-      - id: ruff-format
-
-  - repo: https://github.com/kynan/nbstripout
-    rev: 0.9.1
-    hooks:
-      - id: nbstripout
-
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.38.0
     hooks:
@@ -50,8 +38,48 @@ repos:
     hooks:
       - id: remove-tabs
 
+  - repo: https://github.com/WGUNDERWOOD/tex-fmt
+    rev: v0.5.7
+    hooks:
+      - id: tex-fmt
+        args: [-f, -n, -r, -v, --format-tables]
+
+  - repo: https://github.com/FlamingTempura/bibtex-tidy
+    rev: v1.14.0
+    hooks:
+      - id: bibtex-tidy
+        args:
+          - --align=10
+          - --blank-lines
+          - --curly
+          - --duplicates
+          - --drop-all-caps
+          - --encode-urls
+          - --no-escape
+          - --no-wrap
+          - --numeric
+          - --omit=abstract,copyright,keywords,language,note,notes,shorttitle
+          - --remove-dupe-fields
+          - --remove-empty-fields
+          - --sort
+          - --sort-fields
+          - --strip-comments
+          - --trailing-commas
+
   - repo: https://github.com/meliache/pre-commit-chktex
     rev: v0.2.2
     hooks:
       - id: chktex-system
         args: [-eall, -n3, -n12, -n22, -n30, -n46]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.15
+    hooks:
+      - id: ruff-check
+        args: [--no-cache, --fix]
+      - id: ruff-format
+
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.9.1
+    hooks:
+      - id: nbstripout
