@@ -2,6 +2,7 @@
 """Calculate the v2 revision values and robustness summaries."""
 
 import csv
+import sqlite3
 import unicodedata
 from pathlib import Path
 
@@ -10,6 +11,7 @@ import pandas as pd
 from scipy.stats import linregress
 
 INDICATORS_PATH = Path("analysis/data/indicators-all.csv")
+GDP_PATH = Path("/data/snm/inputs/GHS_UCDB_GLOBE_R2024A_V1_1/GHS_UCDB_GLOBE_R2024A.gpkg")
 ORIGINAL_PATH = Path("analysis/data/treeness-results.csv")
 NEATNET_PATH = Path("analysis/data/treeness-results_neat.csv")
 OSMNX_PATH = Path("analysis/data/treeness-results_osmnx.csv")
@@ -70,8 +72,73 @@ def parse_uc_id(path: Path | str) -> int:
     return int(Path(str(path)).stem.rsplit("-", 1)[1])
 
 
+def load_gdp_inputs(gpkg_path: Path = GDP_PATH) -> pd.DataFrame:
+    """Read matching 2020 GDP and population totals from GHSL R2024A V1.1.
+
+    Parameters
+    ----------
+    gpkg_path : pathlib.Path
+        V1.1 GeoPackage containing the socioeconomic and GHSL tables.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Unique ``uc_id`` rows with ``gdp_ppp_total_2020`` (2017 international
+        dollars) and ``resident_pop_2020`` (persons, retaining fractional values).
+
+    Raises
+    ------
+    ValueError
+        If IDs are null, duplicated, or unmatched, or totals are not positive and
+        finite. Duplicate IDs raise pandas' ``MergeError``, a ``ValueError`` subtype.
+
+    Notes
+    -----
+    V1.1's GDP and population fact sheets define zonal sums within the fixed 2025
+    boundaries. The release notes identify a correction to the V1.0 GDP algorithm.
+    The GDP source uses 2017 international dollars (Zenodo record 10976734).
+    Reading only attributes through SQLite avoids loading spatial geometries.
+    """
+    frames = []
+    # The distributed V1.1 database has leading byte-order marks in its actual
+    # column names. Resolve those names before SELECT, then alias them explicitly.
+    connection = sqlite3.connect(gpkg_path.resolve().as_uri() + "?mode=ro", uri=True)
+    try:
+        for table, source, target in (
+            ("GHS_UCDB_THEME_SOCIOECONOMIC_GLOBE_R2024A", "SC_GDP_SUM_2020", "gdp_ppp_total_2020"),
+            ("GHS_UCDB_THEME_GHSL_GLOBE_R2024A", "GH_POP_TOT_2020", "resident_pop_2020"),
+        ):
+            columns = {
+                row[1].lstrip("\ufeff"): row[1]
+                for row in connection.execute(f'PRAGMA table_info("{table}")')
+            }
+            frame = pd.read_sql_query(
+                f'SELECT "{columns["ID_UC_G0"]}" AS uc_id, '
+                f'"{columns[source]}" AS "{target}" FROM "{table}"',
+                connection,
+            )
+            if frame["uc_id"].isna().any():
+                raise ValueError(f"Null GHSL urban centre IDs in {table}")
+            frames.append(frame)
+    finally:
+        connection.close()
+
+    # An outer merge exposes missing rows in either source table rather than
+    # silently removing them. Cardinality validation also rejects duplicate IDs.
+    totals = frames[0].merge(
+        frames[1], on="uc_id", how="outer", validate="one_to_one", indicator=True
+    )
+    if not totals["_merge"].eq("both").all():
+        raise ValueError("GDP and population urban centre IDs do not match")
+    totals = totals.drop(columns="_merge")
+    values = totals[["gdp_ppp_total_2020", "resident_pop_2020"]].astype(float)
+    if not (np.isfinite(values) & values.gt(0)).all().all():
+        raise ValueError("2020 GDP and population totals must be positive and finite")
+    return totals
+
+
 def add_derived_columns(frame: pd.DataFrame, include_cc: bool) -> pd.DataFrame:
-    """Add the v1-derived analysis variables to a copy of a merged frame.
+    """Add analysis variables, using corrected V1.1 totals for GDP per capita.
 
     The formulas are kept explicit so a reviewer can compare each unit conversion
     and redundancy definition with the v1 analysis and with the revision plan.
@@ -94,6 +161,8 @@ def add_derived_columns(frame: pd.DataFrame, include_cc: bool) -> pd.DataFrame:
     square kilometres, and population density is reported in thousands per square
     kilometre.  Log columns are derived only after those physical quantities are
     formed, which keeps the units visible and consistent.
+    GDP per capita divides V1.1's 2020 GDP total by its 2020 population total,
+    both within the fixed 2025 urban centre boundary.
     """
     derived = frame.copy()
     # Lambda is the complement of the MST length ratio; theta is the normalized
@@ -113,9 +182,14 @@ def add_derived_columns(frame: pd.DataFrame, include_cc: bool) -> pd.DataFrame:
     derived["pop_density_km2_1000s"] = (derived["resident_pop"] / 1_000) / derived[
         "built_up_area_km2"
     ]
-    derived["gdp_ppp_percap"] = (
-        derived["gdp_ppp"] * derived["built_up_area_km2"] / derived["resident_pop"]
-    )
+    # Use same-year totals, not the old mean GDP pixel value or building footprint
+    # area. Keep the existing 2025 resident population for population density only.
+    values = derived[["gdp_ppp_total_2020", "resident_pop_2020"]].astype(float)
+    if not (np.isfinite(values) & values.gt(0)).all().all():
+        raise ValueError("2020 GDP and population totals must be positive and finite")
+    derived["gdp_ppp_percap"] = derived["gdp_ppp_total_2020"] / derived["resident_pop_2020"]
+    if not (np.isfinite(derived["gdp_ppp_percap"]) & derived["gdp_ppp_percap"].gt(0)).all():
+        raise ValueError("2020 GDP per capita must be positive and finite")
     # The three logs match the variables used in the existing correlation analysis;
     # no epsilon or imputation is added because that would change the analysis.
     derived["built_up_area_km2_log"] = np.log(derived["built_up_area_km2"])
@@ -166,6 +240,7 @@ def load_representation(
     results_path: Path,
     indicators_path: Path,
     include_cc: bool,
+    gdp_path: Path = GDP_PATH,
 ) -> pd.DataFrame:
     """Load, merge, filter, and derive variables for one representation.
 
@@ -177,6 +252,8 @@ def load_representation(
         Source indicator CSV.
     include_cc : bool
         Whether the result contains largest-connected-component columns.
+    gdp_path : pathlib.Path
+        GHSL R2024A V1.1 GeoPackage supplying 2020 GDP and population totals.
 
     Returns
     -------
@@ -186,7 +263,7 @@ def load_representation(
     Raises
     ------
     ValueError
-        If result IDs are duplicated.
+        If result IDs are duplicated or indicator IDs lack valid V1.1 GDP inputs.
 
     Notes
     -----
@@ -196,6 +273,12 @@ def load_representation(
     merge keeps each eligible UC represented at most once.
     """
     indicators = pd.read_csv(indicators_path)
+    indicators = indicators.merge(
+        load_gdp_inputs(gdp_path), on="uc_id", how="left", validate="one_to_one", indicator=True
+    )
+    if not indicators["_merge"].eq("both").all():
+        raise ValueError("Missing V1.1 GDP inputs for indicator urban centre IDs")
+    indicators = indicators.drop(columns="_merge")
     # Filter on the source graph size before merging because only OSMnx results
     # also contain a result-side ``node_count`` column.
     indicators = indicators[indicators["node_count"] > 100].copy()
