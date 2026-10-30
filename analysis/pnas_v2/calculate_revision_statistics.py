@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Calculate the v2 revision values and robustness summaries."""
+"""Calculate revision statistics and robustness summaries."""
 
 import csv
 import sqlite3
@@ -48,10 +48,7 @@ STREET_NETWORK_REFERENCES = (
 
 
 def parse_uc_id(path: Path | str) -> int:
-    """Parse a UC ID from the final hyphen-delimited filename component.
-
-    Result filenames include descriptive prefixes that may contain hyphens.  The
-    final stem component is therefore the only stable location for the numeric ID.
+    """Extract the urban centre ID from the last filename component.
 
     Parameters
     ----------
@@ -61,19 +58,17 @@ def parse_uc_id(path: Path | str) -> int:
     Returns
     -------
     int
-        Parsed UC ID.
+        Urban centre ID.
 
     Notes
     -----
-    The same convention is used by the OSMnx result writer.  Parsing it here allows
-    all representations to merge on the source indicator table without relying on
-    directory names or the spelling of a city.
+    City names can contain hyphens, so the ID is read from the final part.
     """
     return int(Path(str(path)).stem.rsplit("-", 1)[1])
 
 
 def load_gdp_inputs(gpkg_path: Path = GDP_PATH) -> pd.DataFrame:
-    """Read matching 2020 GDP and population totals from GHSL R2024A V1.1.
+    """Read 2020 GDP and population totals from GHSL R2024A V1.1.
 
     Parameters
     ----------
@@ -84,24 +79,25 @@ def load_gdp_inputs(gpkg_path: Path = GDP_PATH) -> pd.DataFrame:
     -------
     pandas.DataFrame
         Unique ``uc_id`` rows with ``gdp_ppp_total_2020`` (2017 international
-        dollars) and ``resident_pop_2020`` (persons, retaining fractional values).
+        dollars) and ``resident_pop_2020`` (persons, retaining fractional
+        values).
 
     Raises
     ------
     ValueError
-        If IDs are null, duplicated, or unmatched, or totals are not positive and
-        finite. Duplicate IDs raise pandas' ``MergeError``, a ``ValueError`` subtype.
+        If IDs are null, duplicated, or unmatched, or totals are not positive
+        and
+        finite. Duplicate IDs raise pandas' ``MergeError``, a ``ValueError``
+        subtype.
 
     Notes
     -----
-    V1.1's GDP and population fact sheets define zonal sums within the fixed 2025
-    boundaries. The release notes identify a correction to the V1.0 GDP algorithm.
-    The GDP source uses 2017 international dollars (Zenodo record 10976734).
-    Reading only attributes through SQLite avoids loading spatial geometries.
+    GDP is in 2017 international dollars (Zenodo record 10976734).
+    Both totals use fixed 2025 urban centre boundaries. Population retains
+    fractional values.
     """
     frames = []
-    # The distributed V1.1 database has leading byte-order marks in its actual
-    # column names. Resolve those names before SELECT, then alias them explicitly.
+    # strip the leading byte-order marks from V1.1 column names
     connection = sqlite3.connect(gpkg_path.resolve().as_uri() + "?mode=ro", uri=True)
     try:
         for table, source, target in (
@@ -123,8 +119,7 @@ def load_gdp_inputs(gpkg_path: Path = GDP_PATH) -> pd.DataFrame:
     finally:
         connection.close()
 
-    # An outer merge exposes missing rows in either source table rather than
-    # silently removing them. Cardinality validation also rejects duplicate IDs.
+    # check that both tables contain the same unique urban centre IDs
     totals = frames[0].merge(
         frames[1], on="uc_id", how="outer", validate="one_to_one", indicator=True
     )
@@ -138,10 +133,7 @@ def load_gdp_inputs(gpkg_path: Path = GDP_PATH) -> pd.DataFrame:
 
 
 def add_derived_columns(frame: pd.DataFrame, include_cc: bool) -> pd.DataFrame:
-    """Add analysis variables, using corrected V1.1 totals for GDP per capita.
-
-    The formulas are kept explicit so a reviewer can compare each unit conversion
-    and redundancy definition with the v1 analysis and with the revision plan.
+    """Calculate redundancy, densities, GDP per capita, and logs.
 
     Parameters
     ----------
@@ -157,23 +149,18 @@ def add_derived_columns(frame: pd.DataFrame, include_cc: bool) -> pd.DataFrame:
 
     Notes
     -----
-    Lengths are converted from metres to kilometres, area from square metres to
-    square kilometres, and population density is reported in thousands per square
-    kilometre.  Log columns are derived only after those physical quantities are
-    formed, which keeps the units visible and consistent.
-    GDP per capita divides V1.1's 2020 GDP total by its 2020 population total,
-    both within the fixed 2025 urban centre boundary.
+    GDP per capita uses 2020 GDP and population totals. Population density
+    uses 2025 population. Lengths are in km, areas in km2, and population
+    density in thousands of persons per km2. Logs are natural logarithms.
     """
     derived = frame.copy()
-    # Lambda is the complement of the MST length ratio; theta is the normalized
-    # circuit rank.  The connected-component versions exist only in v1/neatnet.
+    # calculate redundancy for the full graph and largest component
     derived["length_redundancy"] = 1 - derived["length_ratio"]
     derived["link_redundancy"] = derived["circuit_rank_ratio"]
     if include_cc:
         derived["length_redundancy_cc"] = 1 - derived["length_ratio_cc"]
         derived["link_redundancy_cc"] = derived["circuit_rank_ratio_cc"]
-    # Convert source totals before calculating densities or logarithms so downstream
-    # correlation names describe their actual units.
+    # convert lengths to km and areas to km2 before calculating densities
     derived["length_total_km"] = derived["length_total"] / 1_000
     derived["intersect_density_km2"] = (
         derived["intersect_count"] / derived["built_up_area_m2"] * 1_000_000
@@ -182,16 +169,15 @@ def add_derived_columns(frame: pd.DataFrame, include_cc: bool) -> pd.DataFrame:
     derived["pop_density_km2_1000s"] = (derived["resident_pop"] / 1_000) / derived[
         "built_up_area_km2"
     ]
-    # Use same-year totals, not the old mean GDP pixel value or building footprint
-    # area. Keep the existing 2025 resident population for population density only.
+    # divide 2020 GDP by 2020 population within the same urban boundary
+    # keep 2025 population for the population density calculation
     values = derived[["gdp_ppp_total_2020", "resident_pop_2020"]].astype(float)
     if not (np.isfinite(values) & values.gt(0)).all().all():
         raise ValueError("2020 GDP and population totals must be positive and finite")
     derived["gdp_ppp_percap"] = derived["gdp_ppp_total_2020"] / derived["resident_pop_2020"]
     if not (np.isfinite(derived["gdp_ppp_percap"]) & derived["gdp_ppp_percap"].gt(0)).all():
         raise ValueError("2020 GDP per capita must be positive and finite")
-    # The three logs match the variables used in the existing correlation analysis;
-    # no epsilon or imputation is added because that would change the analysis.
+    # take natural logs for the correlation analysis
     derived["built_up_area_km2_log"] = np.log(derived["built_up_area_km2"])
     derived["length_total_km_log"] = np.log(derived["length_total_km"])
     derived["gdp_ppp_percap_log"] = np.log(derived["gdp_ppp_percap"])
@@ -202,7 +188,7 @@ def calculate_bc_gini_contrasts(
     frame: pd.DataFrame,
     redundancy_column: str,
 ) -> dict[str, float]:
-    """Calculate strict lower and upper decile ``bc_gini`` contrasts.
+    """Calculate median betweenness Gini in the redundancy deciles.
 
     Parameters
     ----------
@@ -218,12 +204,9 @@ def calculate_bc_gini_contrasts(
 
     Notes
     -----
-    Pandas' 10th and 90th percentiles define the thresholds.  Strict comparisons
-    exclude observations exactly on a threshold, as required for the practical
-    low- and high-redundancy contrasts.
+    Values exactly on the 10th or 90th percentile are excluded.
     """
-    # Keep threshold observations out of both tails.  This differs from a rank-based
-    # split when repeated redundancy values occur at a decile boundary.
+    # exclude values exactly on either decile threshold
     lower = frame[redundancy_column].quantile(0.1)
     upper = frame[redundancy_column].quantile(0.9)
     lower_mask = frame[redundancy_column] < lower
@@ -242,7 +225,7 @@ def load_representation(
     include_cc: bool,
     gdp_path: Path = GDP_PATH,
 ) -> pd.DataFrame:
-    """Load, merge, filter, and derive variables for one representation.
+    """Load and prepare one network representation.
 
     Parameters
     ----------
@@ -258,19 +241,13 @@ def load_representation(
     Returns
     -------
     pandas.DataFrame
-        Merged rows with ``node_count > 100`` and v1-derived variables.
+        Matched results with ``node_count > 100`` and derived variables.
 
     Raises
     ------
     ValueError
-        If result IDs are duplicated or indicator IDs lack valid V1.1 GDP inputs.
-
-    Notes
-    -----
-    Eligibility is filtered on the indicator-side node count before merging.  The
-    OSMnx result also has a ``node_count`` column, so filtering after the merge would
-    create suffixed columns and could select the wrong measure.  The one-to-one
-    merge keeps each eligible UC represented at most once.
+        If result IDs are duplicated or indicator IDs lack valid V1.1 GDP
+        inputs.
     """
     indicators = pd.read_csv(indicators_path)
     indicators = indicators.merge(
@@ -279,17 +256,14 @@ def load_representation(
     if not indicators["_merge"].eq("both").all():
         raise ValueError("Missing V1.1 GDP inputs for indicator urban centre IDs")
     indicators = indicators.drop(columns="_merge")
-    # Filter on the source graph size before merging because only OSMnx results
-    # also contain a result-side ``node_count`` column.
+    # filter on source node count before merging with OSMnx node counts
     indicators = indicators[indicators["node_count"] > 100].copy()
     results = pd.read_csv(results_path)
-    # Parse the final filename component before merging because result IDs are names,
-    # while the indicator table uses integer UC IDs.
+    # extract urban centre IDs from result filenames
     results["uc_id"] = results["id"].map(parse_uc_id)
     if results["uc_id"].duplicated().any():
         raise ValueError(f"Duplicate UC IDs in {results_path}")
-    # An inner, one-to-one merge removes ineligible or missing result rows without
-    # inventing observations and catches duplicate indicator IDs if they exist.
+    # match eligible indicators to available results by urban centre ID
     merged = indicators.merge(
         results,
         on="uc_id",
@@ -304,26 +278,25 @@ def calculate_correlations(
     representation: str,
     frame: pd.DataFrame,
 ) -> list[dict[str, object]]:
-    """Calculate the 18 prescribed Pearson correlations.
+    """Calculate Pearson correlations for both redundancy indicators.
 
     Parameters
     ----------
     representation : str
         Name written to the correlation output.
     frame : pandas.DataFrame
-        Representation frame containing the two redundancy variables and comparisons.
+        Representation frame containing the two redundancy variables and
+        comparisons.
 
     Returns
     -------
     list[dict[str, object]]
-        Eighteen correlation rows with comparison flags initially set to ``False``.
+        Eighteen correlation rows with comparison flags initially set to
+        ``False``.
 
     Notes
     -----
-    The original frame is also calculated even though only neatnet and OSMnx rows
-    are written.  It supplies the primary correlations needed for the sign and
-    significance comparisons.  ``linregress`` returns the Pearson ``r`` and its
-    two-sided p-value for each complete pair of columns.
+    Each p-value is two-sided and uses complete pairs of observations.
     """
     rows: list[dict[str, object]] = []
     for redundancy, redundancy_column in (
@@ -331,8 +304,7 @@ def calculate_correlations(
         ("lambda", "length_redundancy"),
     ):
         for comparison in COMPARISON_COLUMNS:
-            # Pairwise dropping preserves the existing analysis for variables with
-            # different missing-value patterns instead of dropping whole rows once.
+            # drop missing values separately for each pair of variables
             values = frame[[redundancy_column, comparison]].dropna()
             result = linregress(values[comparison], values[redundancy_column])
             rows.append(
@@ -353,7 +325,7 @@ def compare_correlations(
     rows: list[dict[str, object]],
     primary_rows: list[dict[str, object]],
 ) -> list[dict[str, object]]:
-    """Add sign and significance changes relative to primary correlations.
+    """Compare correlation signs and significance with the original.
 
     Parameters
     ----------
@@ -366,23 +338,15 @@ def compare_correlations(
     -------
     list[dict[str, object]]
         Copies of ``rows`` with both comparison flags filled in.
-
-    Notes
-    -----
-    Rows are matched by redundancy and comparison name, not by list position.  This
-    makes the comparison explicit and prevents a changed column order from attaching
-    an original p-value to the wrong robustness result.
     """
-    # Index the primary rows once because each robust row must be compared with the
-    # same indicator/comparison pair from the original representation.
+    # match each correlation to the same pair in the original representation
     primary_by_key = {(str(row["redundancy"]), str(row["comparison"])): row for row in primary_rows}
     compared: list[dict[str, object]] = []
     for row in rows:
         key = (str(row["redundancy"]), str(row["comparison"]))
         primary = primary_by_key[key]
         current = row.copy()
-        # A sign change and a p<0.05 change are separate states, so report both
-        # rather than treating significance as a proxy for the direction of r.
+        # compare correlation signs and significance at p < 0.05 separately
         current["sign_changed_from_primary"] = np.sign(float(current["r"])) != np.sign(
             float(primary["r"])
         )
@@ -394,7 +358,7 @@ def compare_correlations(
 
 
 def normalized_name(value: object) -> str:
-    """Normalize a location name for case, accents, and separator differences.
+    """Normalize case, accents, and separators in a location name.
 
     Parameters
     ----------
@@ -405,21 +369,14 @@ def normalized_name(value: object) -> str:
     -------
     str
         Case-folded alphanumeric name suitable for exact comparison.
-
-    Notes
-    -----
-    This helper is used only for validating known source labels.  Removing accents
-    and separators lets a source identifier such as ``san_luis_rio_colorado`` match
-    its manuscript spelling without changing the label written to an output.
     """
-    # Decompose accents first, then retain letters and numbers so case, punctuation,
-    # underscores, and diacritics do not affect a validation comparison.
+    # remove accents, punctuation, and separators for name comparisons
     decomposed = unicodedata.normalize("NFKD", str(value)).casefold()
     return "".join(character for character in decomposed if character.isalnum())
 
 
 def manuscript_label(value: object) -> str:
-    """Format a source identifier as a readable manuscript label.
+    """Format a source identifier as a readable label.
 
     Parameters
     ----------
@@ -430,21 +387,14 @@ def manuscript_label(value: object) -> str:
     -------
     str
         Title-cased label with word separators replaced by spaces.
-
-    Notes
-    -----
-    Source tables use identifier-style names in some rows.  Replacing separators and
-    title-casing here keeps output labels readable while leaving non-Latin names
-    unchanged apart from whitespace normalization.
     """
-    # Normalize only presentation spelling; the source value remains unchanged in
-    # the input frame and continues to support exact data validation.
+    # replace identifier separators with spaces for display
     label = str(value).replace("_", " ").replace("-", " ")
     return " ".join(label.split()).title()
 
 
 def display_city(row: pd.Series) -> str:
-    """Choose and format a readable city label from one source row.
+    """Select a city name for display.
 
     Parameters
     ----------
@@ -455,31 +405,22 @@ def display_city(row: pd.Series) -> str:
     -------
     str
         Manuscript-ready city label for the revision outputs.
-
-    Notes
-    -----
-    ``uc_names`` is the preferred human label when it contains one name, and it is
-    required when ``core_city`` is ``unnamed``.  Rows with semicolon-separated UC
-    names describe multiple places, so the single core-city identifier is clearer in
-    the compact revision output.
     """
     city = str(row["core_city"]).strip()
     uc_names_value = row["uc_names"]
     uc_names = "" if pd.isna(uc_names_value) else str(uc_names_value).strip()
-    # The source core-city field is not informative for this row; retain the supplied
-    # human-readable UC name, including its script, instead of inventing a translation.
+    # use the urban centre name if the core city is unnamed
     if normalized_name(city) == "unnamed" and uc_names:
         return uc_names
-    # A single UC name is already a manuscript label.  Semicolon-separated names are
-    # a list, so use the compact core-city label instead of printing the full list.
+    # use a single urban centre name, or fall back to the core city
     if uc_names and ";" not in uc_names:
         return uc_names
-    # This fallback handles missing UC names and converts identifier syntax to prose.
+    # format the core city identifier as a readable label
     return manuscript_label(city)
 
 
 def validate_existing_values(original: pd.DataFrame, neatnet: pd.DataFrame) -> None:
-    """Validate the fixed values from the existing original and neatnet CSVs.
+    """Check original and neatnet results against reference values.
 
     Parameters
     ----------
@@ -496,16 +437,9 @@ def validate_existing_values(original: pd.DataFrame, neatnet: pd.DataFrame) -> N
     Returns
     -------
     None
-        Returns only after all stated existing-data checks pass.
-
-    Notes
-    -----
-    These assertions are guards for the author's production run, not estimates or
-    corrections.  They compare the existing v1/neatnet source values with the
-    revision plan before any new summary is written.
+        No return value.
     """
-    # Counts and means catch an incorrect merge or eligibility filter before more
-    # specific checks could pass on a subtly different sample.
+    # check sample sizes and mean redundancy
     assert len(original) == 9_923
     assert original["uc_id"].nunique() == 9_923
     assert len(neatnet) == 9_921
@@ -515,9 +449,7 @@ def validate_existing_values(original: pd.DataFrame, neatnet: pd.DataFrame) -> N
     assert np.isclose(neatnet["link_redundancy"].mean(), 0.256, atol=0.0005)
     assert np.isclose(neatnet["length_redundancy"].mean(), 0.407, atol=0.0005)
 
-    # Store each target with its expected source row, indicator, label, and precision.
-    # Selecting extrema from the frame keeps these checks tied to the data rather than
-    # rebuilding or reselecting any graph.
+    # check the locations and values of the original sample extrema
     extrema = {
         ("theta", "min"): (
             original["link_redundancy"].idxmin(),
@@ -557,16 +489,14 @@ def validate_existing_values(original: pd.DataFrame, neatnet: pd.DataFrame) -> N
         assert np.isclose(float(row[column]), value, atol=1e-6)
         assert direction in {"min", "max"}
 
-    # Check the two full-network examples used in the revision text by UC ID, not by
-    # a city string that may have multiple source spellings.
+    # check the full-network values used in the example figure caption
     examples = {4443: (0.414606, 0.554694), 2315: (0.130825, 0.290192)}
     for uc_id, (theta, length) in examples.items():
         row = original.loc[original["uc_id"] == uc_id].iloc[0]
         assert np.isclose(row["link_redundancy"], theta, atol=1e-6)
         assert np.isclose(row["length_redundancy"], length, atol=1e-6)
 
-    # Recompute the strict-tail contrasts from the prepared original frame so the
-    # summary reports the same values that were validated here.
+    # check betweenness Gini medians in the upper and lower deciles
     theta_contrasts = calculate_bc_gini_contrasts(original, "link_redundancy")
     lambda_contrasts = calculate_bc_gini_contrasts(original, "length_redundancy")
     assert np.isclose(theta_contrasts["p10"], 0.186365, atol=1e-6)
@@ -578,8 +508,7 @@ def validate_existing_values(original: pd.DataFrame, neatnet: pd.DataFrame) -> N
     assert np.isclose(lambda_contrasts["low_median"], 0.739050, atol=1e-6)
     assert np.isclose(lambda_contrasts["high_median"], 0.628061, atol=1e-6)
 
-    # Connected-component values are checked in the exact Figure 1 order because the
-    # later summary and caption use that order without reordering the cases.
+    # check largest-component values in Figure 1 order
     for uc_id, city, country, theta, length in (
         (10309, "xiangtan", "china", 0.397, 0.652),
         (11569, "zhenhai district", "china", 0.411, 0.641),
@@ -594,8 +523,7 @@ def validate_existing_values(original: pd.DataFrame, neatnet: pd.DataFrame) -> N
         assert np.isclose(row["link_redundancy_cc"], theta, atol=0.0005)
         assert np.isclose(row["length_redundancy_cc"], length, atol=0.0005)
 
-    # Calculate primary correlations only to establish the comparison baseline; the
-    # output CSV intentionally contains robust (neatnet and OSMnx) rows only.
+    # check correlation changes between the original and neatnet results
     primary = calculate_correlations("original", original)
     robust = compare_correlations(calculate_correlations("neatnet", neatnet), primary)
     primary_by_key = {(row["redundancy"], row["comparison"]): row for row in primary}
@@ -618,7 +546,7 @@ def build_values(
     neatnet: pd.DataFrame,
     osmnx: pd.DataFrame,
 ) -> list[dict[str, object]]:
-    """Build the revision value rows from prepared representation frames.
+    """Collect reference values and results for the revision.
 
     Parameters
     ----------
@@ -633,17 +561,9 @@ def build_values(
     -------
     list[dict[str, object]]
         Unique ``item`` and ``value`` rows for the v2 values CSV.
-
-    Notes
-    -----
-    Calculations remain at full floating-point precision in this machine-readable
-    output.  The rows are grouped by references, sample summaries, decile contrasts,
-    examples, extrema, and Figure 1 cases so later manuscript edits can use one
-    stable lookup table without parsing the text summary.
     """
     rows: list[dict[str, object]] = []
-    # Store both measures for each analytical reference.  The text summary adds the
-    # unit-edge qualification for lambda because the CSV has no prose context.
+    # store lattice references and representation summaries
     for item, value in (
         ("reference_tree_theta", 0),
         ("reference_tree_lambda", 0),
@@ -681,8 +601,7 @@ def build_values(
     ):
         rows.append({"item": item, "value": value})
 
-    # Reuse the strict-tail calculation so the values CSV and caption-ready summary
-    # cannot disagree about the decile definition.
+    # calculate decile thresholds and betweenness Gini medians
     theta_contrasts = calculate_bc_gini_contrasts(original, "link_redundancy")
     lambda_contrasts = calculate_bc_gini_contrasts(original, "length_redundancy")
     for item, value in (
@@ -697,8 +616,7 @@ def build_values(
     ):
         rows.append({"item": item, "value": value})
 
-    # These examples are selected by their fixed UC IDs from the existing data; no
-    # graph is rebuilt and no city is reselected by a name match.
+    # select the two example cities by urban centre ID
     examples = (("buenos_aires", 4443), ("bangkok", 2315))
     for label, uc_id in examples:
         row = original.loc[original["uc_id"] == uc_id].iloc[0]
@@ -709,8 +627,7 @@ def build_values(
             ]
         )
 
-    # Select empirical extrema from the full original sample and retain the readable
-    # city/country labels needed for later prose revisions.
+    # record the extrema and their city labels
     extrema = (
         ("theta_min", "link_redundancy", "min"),
         ("theta_max", "link_redundancy", "max"),
@@ -729,8 +646,7 @@ def build_values(
             ]
         )
 
-    # Preserve the prescribed Figure 1 order.  The connected-component columns are
-    # available only for the original and neatnet representations.
+    # record largest-component values in Figure 1 order
     for uc_id in FIGURE_1_IDS:
         row = original.loc[original["uc_id"] == uc_id].iloc[0]
         rows.extend(
@@ -741,14 +657,13 @@ def build_values(
                 {"item": f"figure_1_{uc_id}_lambda_cc", "value": row["length_redundancy_cc"]},
             ]
         )
-    # Duplicate item names would make a later lookup ambiguous, so reject them
-    # before the writer creates the values file.
+    # check that each output item has a unique name
     assert len({str(row["item"]) for row in rows}) == len(rows)
     return rows
 
 
 def write_values(path: Path, rows: list[dict[str, object]]) -> None:
-    """Write unique revision values with the required two-column schema.
+    """Write revision values to a two-column CSV.
 
     Parameters
     ----------
@@ -757,19 +672,12 @@ def write_values(path: Path, rows: list[dict[str, object]]) -> None:
     rows : list[dict[str, object]]
         Rows containing unique ``item`` and ``value`` keys.
 
-    Notes
-    -----
-    The schema assertion runs before opening the output.  This keeps malformed rows
-    from producing a partially valid values file and preserves the exact two-column
-    contract used by downstream manuscript work.
-
     Returns
     -------
     None
         The validated rows are written to ``path``.
     """
-    # Validate every row before creating the file, so a malformed list cannot leave a
-    # plausible but incomplete output behind.
+    # check column order and unique item names before writing
     fieldnames = ["item", "value"]
     assert all(list(row) == fieldnames for row in rows)
     assert len({str(row["item"]) for row in rows}) == len(rows)
@@ -780,7 +688,7 @@ def write_values(path: Path, rows: list[dict[str, object]]) -> None:
 
 
 def write_correlations(path: Path, rows: list[dict[str, object]]) -> None:
-    """Write exactly 36 robustness correlation rows.
+    """Write the 36 robustness correlations to a CSV.
 
     Parameters
     ----------
@@ -789,19 +697,12 @@ def write_correlations(path: Path, rows: list[dict[str, object]]) -> None:
     rows : list[dict[str, object]]
         Eighteen neatnet and eighteen OSMnx rows.
 
-    Notes
-    -----
-    The primary/original correlations are used only as an in-memory comparison
-    baseline.  Exactly 18 rows per robust representation are written, with flags
-    that state whether sign or p<0.05 status changed from that baseline.
-
     Returns
     -------
     None
         The validated 36 rows are written to ``path``.
     """
-    # Validate cardinality and column order before creating the output so a bad
-    # correlation list cannot leave a plausible but incomplete CSV.
+    # check row counts and column order before writing
     assert len(rows) == 36
     assert sum(row["representation"] == "neatnet" for row in rows) == 18
     assert sum(row["representation"] == "osmnx" for row in rows) == 18
@@ -818,7 +719,7 @@ def build_summary(
     osmnx: pd.DataFrame,
     correlations: list[dict[str, object]],
 ) -> str:
-    """Build a short caption-ready text summary without result interpretation.
+    """Summarize reference values, results, and robustness checks.
 
     Parameters
     ----------
@@ -835,30 +736,20 @@ def build_summary(
     -------
     str
         Labeled summary text ending with a newline.
-
-    Notes
-    -----
-    The summary uses stated display precision only; the values CSV retains full
-    precision.  Sections contain only the quantities requested for the later
-    revision, and labels are formatted for prose instead of copied from identifiers.
-    Lattice lambda values are explicitly marked as assuming unit-length edges.
     """
-    # Start with the one qualification that applies to the analytical lattice
-    # comparison.  Empirical lambda values below use the observed edge lengths.
+    # state the equal-edge-length assumption for lattice lambda values
     lines = [
         "Street-network references",
         "Analytical lattice lambda values assume unit-length edges.",
     ]
     for label, value in STREET_NETWORK_REFERENCES:
-        # Keep theta and lambda side by side because the analytical references are
-        # limits for the same redundancy definitions.
+        # report both indicators for each reference network
         lines.append(f"{label}: theta={value:.6f}; lambda={value:.6f} (unit-length edges)")
 
     lines.append("")
     lines.append("Figure 1 cases")
     for uc_id in FIGURE_1_IDS:
-        # Use the fixed order and manuscript labels so this block can be pasted into
-        # a caption without exposing source identifiers such as ``zhenhai_district``.
+        # report largest-component values in Figure 1 order
         row = original.loc[original["uc_id"] == uc_id].iloc[0]
         lines.append(
             f"UC {uc_id}: {display_city(row)}, {manuscript_label(row['country'])}; "
@@ -868,8 +759,7 @@ def build_summary(
 
     lines.append("")
     lines.append("Full-network examples")
-    # These examples use full-network theta and lambda, not the connected-component
-    # values reported for Figure 1.
+    # report full-network values for the two example cities
     for label, uc_id in (("Buenos Aires", 4443), ("Bangkok", 2315)):
         row = original.loc[original["uc_id"] == uc_id].iloc[0]
         lines.append(
@@ -879,8 +769,7 @@ def build_summary(
 
     lines.append("")
     lines.append("Empirical extrema")
-    # Select extrema from the already prepared original sample and format the source
-    # labels for prose while retaining each UC ID for unambiguous lookup.
+    # report extrema with city labels and urban centre IDs
     for label, column in (
         ("theta minimum", "link_redundancy"),
         ("theta maximum", "link_redundancy"),
@@ -897,8 +786,7 @@ def build_summary(
 
     lines.append("")
     lines.append("bc_gini contrasts")
-    # Recompute both requested contrasts from the same original frame used for
-    # validation; strict percentile masks are applied inside the helper.
+    # report decile thresholds and betweenness Gini medians
     for label, column in (("theta", "link_redundancy"), ("lambda", "length_redundancy")):
         contrasts = calculate_bc_gini_contrasts(original, column)
         lines.append(
@@ -909,8 +797,7 @@ def build_summary(
 
     lines.append("")
     lines.append("Representation summaries")
-    # Display sample sizes, global means, and the two required robustness changes;
-    # no result interpretation belongs in this machine-generated summary.
+    # report sample sizes, means, and changes from the original representation
     for label, frame in (("original", original), ("neatnet", neatnet), ("osmnx", osmnx)):
         summary = (
             f"{label}: n={len(frame)}; theta_mean={frame['link_redundancy'].mean():.6f}; "
@@ -927,8 +814,7 @@ def build_summary(
     lines.append("")
     lines.append("Correlation sign or significance changes")
     for representation in ("neatnet", "osmnx"):
-        # Report only changed states, as requested, rather than interpreting the
-        # direction or practical meaning of any correlation.
+        # report correlations whose sign or significance changed
         changed = [
             row
             for row in correlations
@@ -949,7 +835,7 @@ def build_summary(
 
 
 def write_summary(path: Path, summary: str) -> None:
-    """Write the caption-ready summary text.
+    """Write the text summary.
 
     Parameters
     ----------
@@ -957,11 +843,6 @@ def write_summary(path: Path, summary: str) -> None:
         Summary text path.
     summary : str
         Labeled summary content.
-
-    Notes
-    -----
-    ``build_summary`` supplies the final newline.  This function only writes that
-    prepared text so it cannot alter formatting or add an unplanned section.
 
     Returns
     -------
@@ -972,38 +853,28 @@ def write_summary(path: Path, summary: str) -> None:
 
 
 def main() -> None:
-    """Calculate and write the v2 values, correlations, and summary.
-
-    Notes
-    -----
-    The source frames are loaded and derived in the same order as the three
-    representations.  Existing-value validation runs before any output write, then
-    the original frame supplies the comparison baseline and only robust rows are
-    written to the 36-row correlation file.
+    """Calculate and save revision statistics.
 
     Returns
     -------
     None
-        Returns after the three requested output artifacts are written.
+        No return value.
     """
-    # Loading through one function keeps eligibility filtering, ID parsing, merging,
-    # and derived-variable definitions identical across representations.
+    # load and prepare each representation
     original = load_representation(ORIGINAL_PATH, INDICATORS_PATH, include_cc=True)
     neatnet = load_representation(NEATNET_PATH, INDICATORS_PATH, include_cc=True)
     osmnx = load_representation(OSMNX_PATH, INDICATORS_PATH, include_cc=False)
-    # Stop before writing any v2 output if the existing source data do not match the
-    # stated revision targets.
+    # check the source results before writing summaries
     validate_existing_values(original, neatnet)
     assert len(osmnx) == 9_923
     assert osmnx["uc_id"].nunique() == 9_923
 
-    # The original correlations remain in memory only as the primary comparison;
-    # compare both robustness representations against that same baseline.
+    # compare both alternative representations with the original
     primary = calculate_correlations("original", original)
     correlations = compare_correlations(calculate_correlations("neatnet", neatnet), primary)
     correlations.extend(compare_correlations(calculate_correlations("osmnx", osmnx), primary))
     values = build_values(original, neatnet, osmnx)
-    # These are the only three output artifacts permitted by the revision plan.
+    # write values, correlations, and the text summary
     write_values(VALUES_PATH, values)
     write_correlations(CORRELATIONS_PATH, correlations)
     write_summary(SUMMARY_PATH, build_summary(original, neatnet, osmnx, correlations))
